@@ -186,42 +186,96 @@ async def upload_letterboxd_csv(file: UploadFile = File(...)):
         return {"success": False, "error": str(e)}
 
 @app.get("/api/export", response_class=PlainTextResponse)
-def export_top100(excluded: Optional[str] = Query(None)):
+def export_top100(
+    excluded: Optional[str] = Query(default=None),
+    excluded_genres: Optional[str] = Query(default=None),
+    included_genres: Optional[str] = Query(default=None),
+    min_year: Optional[int] = Query(default=None),
+    max_year: Optional[int] = Query(default=None),
+    min_rating: Optional[float] = Query(default=None),
+    limit: int = Query(default=100)
+):
     global MOVIES_MAP_DATA
     if not MOVIES_MAP_DATA:
         return PlainTextResponse("Données non chargées.", status_code=500)
 
     excluded_set = set()
-    if excluded:
+    if isinstance(excluded, str) and excluded:
         for val in excluded.split(","):
             val = val.strip()
             if val.isdigit():
                 excluded_set.add(int(val))
 
-    eligible = [m for m in MOVIES_MAP_DATA["movies"] if not m["watched"] and m["cluster"] not in excluded_set]
+    ex_genres = [g.strip().lower() for g in excluded_genres.split(",")] if isinstance(excluded_genres, str) and excluded_genres else []
+    in_genres = [g.strip().lower() for g in included_genres.split(",")] if isinstance(included_genres, str) and included_genres else []
+    min_y = min_year if isinstance(min_year, (int, float)) else None
+    max_y = max_year if isinstance(max_year, (int, float)) else None
+    min_r = min_rating if isinstance(min_rating, (int, float)) else None
+    lim = limit if isinstance(limit, int) else 100
+
+    def passes_filters(m):
+        if m["watched"]:
+            return False
+        if m["cluster"] in excluded_set:
+            return False
+        
+        m_genres = (m.get("genres") or "").lower()
+        if ex_genres and any(g in m_genres for g in ex_genres):
+            return False
+        if in_genres and not any(g in m_genres for g in in_genres):
+            return False
+            
+        yr = m.get("year")
+        if yr is not None:
+            if min_y and yr < min_y:
+                return False
+            if max_y and yr > max_y:
+                return False
+                
+        if min_r:
+            ar = m.get("avg_rating")
+            if ar is None or ar < min_r:
+                return False
+
+        return True
+
+    eligible = [m for m in MOVIES_MAP_DATA["movies"] if passes_filters(m)]
     eligible.sort(key=lambda x: x["pred"], reverse=True)
-    top_100 = eligible[:100]
+    top_movies = eligible[:lim]
 
     cluster_names = {c["id"]: c["name"] for c in MOVIES_MAP_DATA["metadata"]["clusters"]}
 
+    filter_desc = []
+    if excluded_set:
+        filter_desc.append(f"Clusters exclus : {', '.join([cluster_names.get(cid, str(cid)) for cid in excluded_set])}")
+    if ex_genres:
+        filter_desc.append(f"Genres bannis : {', '.join(ex_genres)}")
+    if in_genres:
+        filter_desc.append(f"Genres requis : {', '.join(in_genres)}")
+    if min_y or max_y:
+        filter_desc.append(f"Période : {min_y or 'début'} à {max_y or 'actuel'}")
+    if min_r:
+        filter_desc.append(f"Note Letterboxd min : {min_r:.1f}/5")
+
     lines = [
-        "=" * 75,
-        "LATERBOXD — TOP 100 DES RECOMMANDATIONS FILMS (PROJECTION RIDGE SVD)",
-        "=" * 75,
+        "=" * 80,
+        f"LATERBOXD — TOP {len(top_movies)} DES RECOMMANDATIONS FILMS PERSONNALISÉES",
+        "=" * 80,
         f"Généré le : {time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Filtre clusters exclus : {', '.join([cluster_names.get(cid, str(cid)) for cid in excluded_set]) if excluded_set else 'Aucun'}",
-        "-" * 75,
+        f"Filtres actifs : {' | '.join(filter_desc) if filter_desc else 'Aucun'}",
+        f"Nombre total de films éligibles : {len(eligible)} sur 4 658",
+        "-" * 80,
         f"{'RANG':<6} {'TITRE':<42} {'ANNÉE':<8} {'CLUSTER':<24} {'NOTE ESTIMÉE'}",
-        "-" * 75
+        "-" * 80
     ]
 
-    for idx, m in enumerate(top_100, 1):
+    for idx, m in enumerate(top_movies, 1):
         c_name = cluster_names.get(m['cluster'], 'Autre')
         yr = str(m['year']) if m.get('year') else 'N/A'
         title = m['title'][:40]
         lines.append(f"{idx:03d}.   {title:<42} {yr:<8} {c_name:<24} {m['pred']:.2f} / 5")
 
-    lines.append("=" * 75)
+    lines.append("=" * 80)
     return PlainTextResponse("\n".join(lines), media_type="text/plain", headers={"Content-Disposition": "attachment; filename=recommandations_laterboxd.txt"})
 
 if __name__ == "__main__":

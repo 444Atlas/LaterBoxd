@@ -40,7 +40,6 @@
 
     .mono { font-family: var(--font-mono); }
 
-    /* Conteneur de mise en page */
     .container {
       max-width: 1280px;
       margin: 0 auto;
@@ -48,7 +47,6 @@
       padding-right: 2rem;
     }
 
-    /* Espacements verticaux radicaux (py-24, py-32) */
     .section-py {
       padding-top: 6rem;
       padding-bottom: 6rem;
@@ -57,7 +55,6 @@
     .border-b-subtle { border-bottom: 1px solid var(--border); }
     .border-t-subtle { border-top: 1px solid var(--border); }
 
-    /* Boutons et éléments interactifs à rayon strict */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -70,7 +67,7 @@
       background-color: var(--bg-surface);
       color: var(--text-primary);
       cursor: pointer;
-      transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+      transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
       text-decoration: none;
       white-space: nowrap;
     }
@@ -95,8 +92,17 @@
     .btn-danger-active:hover {
       background-color: rgba(217, 67, 67, 0.2);
     }
+    .btn-genre-exclude {
+      background-color: var(--danger-dim);
+      border-color: var(--danger);
+      color: #ff9b9b;
+    }
+    .btn-genre-include {
+      background-color: var(--accent-dim);
+      border-color: var(--accent);
+      color: #93b5ff;
+    }
 
-    /* Tableaux éditoriaux */
     .data-table {
       width: 100%;
       border-collapse: collapse;
@@ -124,13 +130,12 @@
       background-color: rgba(255, 255, 255, 0.02);
     }
 
-    /* Zone de dépôt Letterboxd */
     .dropzone {
       border: 1px dashed var(--border-strong);
       border-radius: var(--radius);
       padding: 1.75rem 1.5rem;
       background-color: var(--bg-surface);
-      transition: border-color 160ms ease-out, background-color 160ms ease-out;
+      transition: border-color 150ms ease-out, background-color 150ms ease-out;
       cursor: pointer;
     }
     .dropzone:hover, .dropzone.dragover {
@@ -138,7 +143,6 @@
       background-color: var(--accent-dim);
     }
 
-    /* Canvas */
     #mapCanvas {
       display: block;
       width: 100%;
@@ -150,7 +154,6 @@
     }
     #mapCanvas:active { cursor: grabbing; }
 
-    /* Tooltip */
     #movieTooltip {
       position: absolute;
       pointer-events: none;
@@ -164,7 +167,6 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
     }
 
-    /* Scrollbars sobres */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--bg-page); }
     ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
@@ -192,7 +194,7 @@
           <span id="portDisplay">FastAPI : Port 8000</span>
         </div>
         <a href="#section-map" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Aller à la carte</a>
-        <a href="#section-top" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Top 100</a>
+        <a href="#section-top" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Top Personnalisé</a>
       </div>
     </div>
   </header>
@@ -212,7 +214,7 @@
         </h1>
 
         <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 2.25rem;">
-          Le modèle SVD projette 4 658 films dans un espace vectoriel à 100 dimensions entraîné sur 6 138 722 évaluations Letterboxd. Lorsqu'un utilisateur a attribué des notes élevées à des films d'enfance ou d'animation, la régression Ridge biaise l'ensemble du profil vers la production jeunesse. Cette interface permet d'isoler ce cluster dans l'espace 2D pour l'exclure du calcul des recommandations.
+          Le modèle SVD projette 4 658 films dans un espace vectoriel à 100 dimensions entraîné sur 6 138 722 évaluations Letterboxd. Lorsqu'un utilisateur a attribué des notes élevées à des films d'enfance ou d'animation, la régression Ridge biaise l'ensemble du profil vers la production jeunesse. Utilisez les filtres avancés par genres, époques, clusters et réputation critique ci-dessous pour composer un classement sur-mesure.
         </p>
 
         <!-- Dépôt de fichier Letterboxd CSV -->
@@ -307,7 +309,6 @@
           </h2>
         </div>
 
-        <!-- Action directe : Bannissement du cluster jeunesse -->
         <button id="btnExcludeKids" class="btn" style="padding: 0.65rem 1.25rem; font-weight: 600;">
           <span id="excludeKidsDot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--danger);"></span>
           <span id="excludeKidsLabel">Exclure le cluster Animation & Jeunesse</span>
@@ -316,8 +317,6 @@
 
       <!-- Barre de filtrage & Recherche -->
       <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; margin-bottom: 1.25rem;">
-        
-        <!-- Recherche textuelle -->
         <div style="position: relative;">
           <input 
             type="text" 
@@ -328,14 +327,12 @@
           <div id="searchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background-color: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius); z-index: 60; max-height: 240px; overflow-y: auto; display: none;"></div>
         </div>
 
-        <!-- Modes de visualisation -->
         <div style="display: flex; gap: 0.35rem;" class="mono">
           <button id="modeAllBtn" class="btn btn-primary" onclick="setFilterMode('all');">Tous (4 658)</button>
           <button id="modeWatchedBtn" class="btn" onclick="setFilterMode('watched');">Vus (211)</button>
-          <button id="modeTopBtn" class="btn" onclick="setFilterMode('top');">Top 100</button>
+          <button id="modeTopBtn" class="btn" onclick="setFilterMode('top');">Top Actif</button>
         </div>
 
-        <!-- Contrôles de caméra -->
         <div style="display: flex; gap: 0.35rem;" class="mono">
           <button class="btn" onclick="adjustZoom(1.25);">Zoom +</button>
           <button class="btn" onclick="adjustZoom(0.8);">Zoom -</button>
@@ -380,15 +377,15 @@
           </div>
           <div style="display: flex; align-items: center; gap: 0.4rem;">
             <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent);"></span>
-            <span style="color: #93b5ff; font-weight: 600;">Top 100 Recommandations</span>
+            <span style="color: #93b5ff; font-weight: 600;">Top Sélectionné</span>
           </div>
         </div>
       </div>
 
-      <!-- Liste asymétrique des clusters (pas de Bento 3x3 !) -->
+      <!-- Nomenclature des clusters -->
       <div style="margin-top: 2rem;">
         <div class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.75rem;">
-          Nomenclature des 8 clusters identifiés
+          Nomenclature des 8 clusters identifiés (Cliquer pour exclure un groupe spécifique)
         </div>
         <div id="clustersList" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
           <!-- Rempli par JavaScript -->
@@ -398,7 +395,7 @@
     </div>
   </section>
 
-  <!-- SECTION 03 : TABLEAU ÉDITORIAL DU TOP 100 (py-24) -->
+  <!-- SECTION 03 : FILTRES AVANCÉS & TABLEAU ÉDITORIAL DU TOP (py-24) -->
   <section id="section-top" class="section-py">
     <div class="container">
       
@@ -409,21 +406,130 @@
             03. CLASSEMENT DES RECOMMANDATIONS
           </div>
           <h2 style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
-            Top 100 Personnalisé (Projection Ridge SVD)
+            Top Recommandations Personnalisé
           </h2>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 0.25rem;" id="topListSubtitle">
-            100 films recommandés parmi les 4 658 de la base, classés par score estimé décroissant.
+            Filtrage en temps réel par genres, période, cote critique et clusters latents.
           </p>
         </div>
 
         <div style="display: flex; gap: 0.5rem;" class="mono">
-          <a id="btnDownloadTxt" href="/api/export?excluded_cluster=3" class="btn btn-primary" download="recommandations_laterboxd.txt">
+          <a id="btnDownloadTxt" href="/api/export" class="btn btn-primary" download="recommandations_laterboxd.txt">
             Télécharger le rapport texte (.txt)
           </a>
           <button id="btnCopyTable" class="btn" onclick="copyTop100ToClipboard();">
-            Copier les 100 titres
+            Copier les titres
           </button>
         </div>
+      </div>
+
+      <!-- CONSOLE DE FILTRAGE ÉDITORIALE -->
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem 1.75rem; margin-bottom: 2rem;">
+        
+        <!-- En-tête des filtres -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="mono" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-primary); letter-spacing: 0.08em;">
+              FILTRES PERSONNALISÉS DU CLASSEMENT
+            </span>
+            <span id="activeFiltersBadge" class="mono" style="font-size: 11px; color: var(--text-secondary);">
+              — Aucun filtre additionnel
+            </span>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;" class="mono">
+            <button id="btnQuickKidsBan" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;" onclick="quickToggleKidsBan();">
+              🚫 Bannir Animation & Jeunesse (1-Clic)
+            </button>
+            <button class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px; color: var(--text-secondary);" onclick="resetAllFilters();">
+              Réinitialiser tous les filtres
+            </button>
+          </div>
+        </div>
+
+        <!-- Corps des filtres -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          
+          <!-- FILTRE 1 : GENRES AVEC MODE EXCLUSION / INCLUSION -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+              <span class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
+                Filtre par Genres cinématographiques
+              </span>
+              <div style="display: flex; align-items: center; gap: 0.5rem;" class="mono">
+                <span style="font-size: 11px; color: var(--text-tertiary);">Comportement des clics :</span>
+                <button id="genreModeExcludeBtn" class="btn btn-genre-exclude" style="padding: 0.25rem 0.55rem; font-size: 11px;" onclick="setGenreMode('exclude');">
+                  Bannir ces genres (Exclusion)
+                </button>
+                <button id="genreModeIncludeBtn" class="btn" style="padding: 0.25rem 0.55rem; font-size: 11px;" onclick="setGenreMode('include');">
+                  Exiger ces genres (Inclusion)
+                </button>
+              </div>
+            </div>
+            <div id="genrePills" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+              <!-- Rempli par JavaScript -->
+            </div>
+          </div>
+
+          <!-- FILTRE 2 & 3 : PÉRIODE ET NOTE LETTERBOXD MINIMALE -->
+          <div style="display: grid; grid-template-columns: 1.4fr 1.1fr 1fr; gap: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.25rem;">
+            
+            <!-- Période / Décennie -->
+            <div>
+              <div class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.5rem;">
+                Période / Époque
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;" class="mono" id="decadeButtons">
+                <button class="btn btn-primary" data-decade="all" onclick="setDecade('all', this);">Toutes époques</button>
+                <button class="btn" data-decade="classic" onclick="setDecade('classic', this);">< 1980</button>
+                <button class="btn" data-decade="80-90" onclick="setDecade('80-90', this);">1980–1999</button>
+                <button class="btn" data-decade="2000s" onclick="setDecade('2000s', this);">2000–2009</button>
+                <button class="btn" data-decade="2010s" onclick="setDecade('2010s', this);">2010–2019</button>
+                <button class="btn" data-decade="2020s" onclick="setDecade('2020s', this);">2020+</button>
+              </div>
+            </div>
+
+            <!-- Note Letterboxd minimale -->
+            <div>
+              <div class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.5rem;">
+                Note Letterboxd minimale
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;" class="mono" id="ratingButtons">
+                <button class="btn btn-primary" data-rating="0" onclick="setMinRating(0, this);">Toutes</button>
+                <button class="btn" data-rating="3.2" onclick="setMinRating(3.2, this);">≥ 3.2 ★</button>
+                <button class="btn" data-rating="3.5" onclick="setMinRating(3.5, this);">≥ 3.5 ★</button>
+                <button class="btn" data-rating="3.8" onclick="setMinRating(3.8, this);">≥ 3.8 ★</button>
+                <button class="btn" data-rating="4.0" onclick="setMinRating(4.0, this);">≥ 4.0 ★</button>
+              </div>
+            </div>
+
+            <!-- Taille du classement -->
+            <div>
+              <div class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.5rem;">
+                Taille du classement
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;" class="mono" id="limitButtons">
+                <button class="btn" data-limit="25" onclick="setRankingLimit(25, this);">Top 25</button>
+                <button class="btn" data-limit="50" onclick="setRankingLimit(50, this);">Top 50</button>
+                <button class="btn btn-primary" data-limit="100" onclick="setRankingLimit(100, this);">Top 100</button>
+                <button class="btn" data-limit="200" onclick="setRankingLimit(200, this);">Top 200</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Pied de console de filtrage -->
+        <div style="margin-top: 1.25rem; padding-top: 0.85rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px;" class="mono">
+          <div style="color: var(--text-secondary);">
+            <strong id="eligibleCountLabel" style="color: var(--text-primary); font-size: 13px;">4 447</strong> films éligibles correspondent à vos critères.
+          </div>
+          <div id="filterStatusText" style="color: var(--text-tertiary);">
+            Classement recalculé instantanément (Tri par score estimé SVD)
+          </div>
+        </div>
+
       </div>
 
       <!-- Tableau éditorial plein format -->
@@ -433,11 +539,11 @@
             <tr>
               <th style="width: 60px;">Rang</th>
               <th>Titre du Film</th>
-              <th style="width: 90px;">Année</th>
+              <th style="width: 80px;">Année</th>
               <th style="width: 220px;">Cluster Sémantique</th>
               <th>Genres</th>
-              <th style="width: 110px; text-align: right;">Note Moyenne</th>
-              <th style="width: 120px; text-align: right;">Note Estimée</th>
+              <th style="width: 120px; text-align: right;">Note Moyenne</th>
+              <th style="width: 130px; text-align: right;">Note Estimée</th>
             </tr>
           </thead>
           <tbody id="topTableBody">
@@ -463,9 +569,36 @@
     let allMovies = [];
     let clusters = [];
     let kidsClusterId = 3;
-    let excludedClusters = new Set();
     let currentFilterMode = 'all'; // 'all', 'watched', 'top'
     let highlightedMovie = null;
+
+    // ÉTATS DE FILTRAGE DU TOP PERSONNALISÉ
+    let excludedClusters = new Set();
+    let selectedGenres = new Set();
+    let genreFilterMode = 'exclude'; // 'exclude' (bannir) | 'include' (exiger)
+    let selectedDecade = 'all'; // 'all', 'classic', '80-90', '2000s', '2010s', '2020s'
+    let selectedMinRating = 0; // 0, 3.2, 3.5, 3.8, 4.0
+    let rankingLimit = 100; // 25, 50, 100, 200
+
+    const GENRES_LIST = [
+      { id: "animation", label: "Animation" },
+      { id: "family", label: "Famille" },
+      { id: "comedy", label: "Comédie" },
+      { id: "horror", label: "Horreur" },
+      { id: "thriller", label: "Thriller" },
+      { id: "action", label: "Action" },
+      { id: "drama", label: "Drame" },
+      { id: "science fiction", label: "Science-Fiction" },
+      { id: "romance", label: "Romance" },
+      { id: "crime", label: "Crime / Polar" },
+      { id: "mystery", label: "Mystère" },
+      { id: "fantasy", label: "Fantastique" },
+      { id: "war", label: "Guerre" },
+      { id: "history", label: "Histoire" },
+      { id: "documentary", label: "Documentaire" },
+      { id: "music", label: "Musique" },
+      { id: "western", label: "Western" }
+    ];
 
     // Éléments Canvas
     const canvas = document.getElementById('mapCanvas');
@@ -490,8 +623,9 @@
         allMovies = appData.movies;
 
         renderClustersList();
+        renderGenrePills();
         resizeCanvas();
-        updateRecommendationsTable();
+        applyFiltersAndUpdate();
       } catch (err) {
         console.error("Erreur de chargement des données :", err);
       }
@@ -508,7 +642,7 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // Rendu des clusters (liste asymétrique, 4 colonnes, pas de bento)
+    // Rendu des clusters SVD
     function renderClustersList() {
       const container = document.getElementById('clustersList');
       container.innerHTML = '';
@@ -539,7 +673,7 @@
             ${c.name}
           </div>
           <div style="font-size: 11px; color: var(--text-tertiary);" class="mono">
-            ${isKids ? '<strong style="color: var(--danger);">[Cible filtrage : 32.9% jeunesse]</strong>' : `Ratio jeunesse : ${(c.kids_ratio * 100).toFixed(1)}%`}
+            ${isKids ? '<strong style="color: var(--danger);">[Cible jeunesse : 32.9%]</strong>' : `Ratio jeunesse : ${(c.kids_ratio * 100).toFixed(1)}%`}
           </div>
         `;
         card.addEventListener('click', () => {
@@ -558,12 +692,10 @@
       }
       updateExclusionButtonState();
       renderClustersList();
-      draw();
-      updateRecommendationsTable();
-      updateDownloadLink();
+      applyFiltersAndUpdate();
     }
 
-    // Bouton d'exclusion rapide du cluster Jeunesse
+    // Bouton rapide d'exclusion du cluster jeunesse
     const btnExcludeKids = document.getElementById('btnExcludeKids');
     const excludeKidsLabel = document.getElementById('excludeKidsLabel');
     const excludeKidsDot = document.getElementById('excludeKidsDot');
@@ -572,7 +704,7 @@
       const isExcluded = excludedClusters.has(kidsClusterId);
       if (isExcluded) {
         btnExcludeKids.className = 'btn btn-danger-active';
-        excludeKidsLabel.textContent = 'Cluster Jeunesse Exclu (Cliquer pour réintégrer)';
+        excludeKidsLabel.textContent = 'Cluster Jeunesse Exclu (Réintégrer)';
         excludeKidsDot.style.backgroundColor = 'var(--danger)';
       } else {
         btnExcludeKids.className = 'btn';
@@ -585,33 +717,228 @@
       toggleClusterExclusion(kidsClusterId);
     });
 
-    function updateDownloadLink() {
-      const btn = document.getElementById('btnDownloadTxt');
-      const excludedArray = Array.from(excludedClusters);
-      btn.href = `/api/export?excluded=${excludedArray.join(',')}`;
+    // Rendu des boutons de genres
+    function renderGenrePills() {
+      const container = document.getElementById('genrePills');
+      container.innerHTML = '';
+
+      GENRES_LIST.forEach(g => {
+        const isSelected = selectedGenres.has(g.id);
+        const btn = document.createElement('button');
+        
+        let styleClass = 'btn';
+        let prefix = '';
+
+        if (isSelected) {
+          if (genreFilterMode === 'exclude') {
+            styleClass = 'btn btn-genre-exclude';
+            prefix = '✕ ';
+          } else {
+            styleClass = 'btn btn-genre-include';
+            prefix = '✓ ';
+          }
+        }
+
+        btn.className = styleClass;
+        btn.style.cssText = 'padding: 0.35rem 0.65rem; font-size: 12px;';
+        btn.innerHTML = `<span>${prefix}${g.label}</span>`;
+        
+        btn.addEventListener('click', () => {
+          if (selectedGenres.has(g.id)) {
+            selectedGenres.delete(g.id);
+          } else {
+            selectedGenres.add(g.id);
+          }
+          renderGenrePills();
+          applyFiltersAndUpdate();
+        });
+
+        container.appendChild(btn);
+      });
     }
 
-    // Calcul du Top 100 actif
-    function getActiveTop100() {
-      const eligible = allMovies.filter(m => !m.watched && !excludedClusters.has(m.cluster));
+    function setGenreMode(mode) {
+      genreFilterMode = mode;
+      document.getElementById('genreModeExcludeBtn').className = mode === 'exclude' ? 'btn btn-genre-exclude' : 'btn';
+      document.getElementById('genreModeIncludeBtn').className = mode === 'include' ? 'btn btn-genre-include' : 'btn';
+      renderGenrePills();
+      applyFiltersAndUpdate();
+    }
+
+    // Filtre Décennie
+    function setDecade(dec, btn) {
+      selectedDecade = dec;
+      const parent = document.getElementById('decadeButtons');
+      parent.querySelectorAll('button').forEach(b => b.className = 'btn');
+      btn.className = 'btn btn-primary';
+      applyFiltersAndUpdate();
+    }
+
+    // Filtre Note minimale
+    function setMinRating(rate, btn) {
+      selectedMinRating = rate;
+      const parent = document.getElementById('ratingButtons');
+      parent.querySelectorAll('button').forEach(b => b.className = 'btn');
+      btn.className = 'btn btn-primary';
+      applyFiltersAndUpdate();
+    }
+
+    // Limite du classement
+    function setRankingLimit(limit, btn) {
+      rankingLimit = limit;
+      const parent = document.getElementById('limitButtons');
+      parent.querySelectorAll('button').forEach(b => b.className = 'btn');
+      btn.className = 'btn btn-primary';
+      applyFiltersAndUpdate();
+    }
+
+    // Raccourci 1-clic : Bannir Animation & Jeunesse
+    function quickToggleKidsBan() {
+      const isKidsActive = selectedGenres.has('animation') && selectedGenres.has('family') && excludedClusters.has(kidsClusterId);
+      if (isKidsActive) {
+        selectedGenres.delete('animation');
+        selectedGenres.delete('family');
+        excludedClusters.delete(kidsClusterId);
+      } else {
+        genreFilterMode = 'exclude';
+        selectedGenres.add('animation');
+        selectedGenres.add('family');
+        excludedClusters.add(kidsClusterId);
+        document.getElementById('genreModeExcludeBtn').className = 'btn btn-genre-exclude';
+        document.getElementById('genreModeIncludeBtn').className = 'btn';
+      }
+      updateExclusionButtonState();
+      renderClustersList();
+      renderGenrePills();
+      applyFiltersAndUpdate();
+    }
+
+    // Réinitialiser tous les filtres
+    function resetAllFilters() {
+      excludedClusters.clear();
+      selectedGenres.clear();
+      genreFilterMode = 'exclude';
+      selectedDecade = 'all';
+      selectedMinRating = 0;
+      rankingLimit = 100;
+
+      updateExclusionButtonState();
+      renderClustersList();
+      renderGenrePills();
+
+      document.getElementById('genreModeExcludeBtn').className = 'btn btn-genre-exclude';
+      document.getElementById('genreModeIncludeBtn').className = 'btn';
+
+      document.querySelectorAll('#decadeButtons button').forEach((b, i) => b.className = i === 0 ? 'btn btn-primary' : 'btn');
+      document.querySelectorAll('#ratingButtons button').forEach((b, i) => b.className = i === 0 ? 'btn btn-primary' : 'btn');
+      document.querySelectorAll('#limitButtons button').forEach((b) => b.className = b.dataset.limit === '100' ? 'btn btn-primary' : 'btn');
+
+      applyFiltersAndUpdate();
+    }
+
+    // Test d'éligibilité d'un film
+    function passesAllFilters(m) {
+      if (m.watched) return false;
+
+      // Filtre Cluster SVD
+      if (excludedClusters.has(m.cluster)) return false;
+
+      // Filtre Genres
+      const mGenres = (m.genres || "").toLowerCase();
+      if (selectedGenres.size > 0) {
+        if (genreFilterMode === 'exclude') {
+          for (const g of selectedGenres) {
+            if (mGenres.includes(g)) return false;
+          }
+        } else {
+          let hasAny = false;
+          for (const g of selectedGenres) {
+            if (mGenres.includes(g)) { hasAny = true; break; }
+          }
+          if (!hasAny) return false;
+        }
+      }
+
+      // Filtre Décennie
+      const yr = m.year;
+      if (selectedDecade !== 'all') {
+        if (!yr) return false;
+        if (selectedDecade === 'classic' && yr >= 1980) return false;
+        if (selectedDecade === '80-90' && (yr < 1980 || yr > 1999)) return false;
+        if (selectedDecade === '2000s' && (yr < 2000 || yr > 2009)) return false;
+        if (selectedDecade === '2010s' && (yr < 2010 || yr > 2019)) return false;
+        if (selectedDecade === '2020s' && yr < 2020) return false;
+      }
+
+      // Filtre Note minimale
+      if (selectedMinRating > 0) {
+        if (!m.avg_rating || m.avg_rating < selectedMinRating) return false;
+      }
+
+      return true;
+    }
+
+    // Calcul et mise à jour globale
+    let currentTopMovies = [];
+
+    function applyFiltersAndUpdate() {
+      const eligible = allMovies.filter(passesAllFilters);
       eligible.sort((a, b) => b.pred - a.pred);
-      return eligible.slice(0, 100);
+      currentTopMovies = eligible.slice(0, rankingLimit);
+
+      // Compteurs
+      document.getElementById('eligibleCountLabel').textContent = `${eligible.length.toLocaleString()} films`;
+      
+      const badgeDesc = [];
+      if (excludedClusters.size > 0) badgeDesc.push(`${excludedClusters.size} cluster(s) exclu(s)`);
+      if (selectedGenres.size > 0) badgeDesc.push(`${selectedGenres.size} genre(s) ${genreFilterMode === 'exclude' ? 'banni(s)' : 'exigé(s)'}`);
+      if (selectedDecade !== 'all') badgeDesc.push(`Époque : ${selectedDecade}`);
+      if (selectedMinRating > 0) badgeDesc.push(`≥ ${selectedMinRating}★`);
+      
+      const badgeElem = document.getElementById('activeFiltersBadge');
+      if (badgeDesc.length > 0) {
+        badgeElem.textContent = `— ${badgeDesc.join(' • ')}`;
+        badgeElem.style.color = 'var(--text-primary)';
+      } else {
+        badgeElem.textContent = '— Aucun filtre actif';
+        badgeElem.style.color = 'var(--text-tertiary)';
+      }
+
+      const quickBtn = document.getElementById('btnQuickKidsBan');
+      const isKidsBanActive = selectedGenres.has('animation') && selectedGenres.has('family') && excludedClusters.has(kidsClusterId);
+      if (isKidsBanActive) {
+        quickBtn.className = 'btn btn-danger-active';
+        quickBtn.textContent = '✓ Animation & Jeunesse Bannis';
+      } else {
+        quickBtn.className = 'btn';
+        quickBtn.textContent = '🚫 Bannir Animation & Jeunesse (1-Clic)';
+      }
+
+      updateRecommendationsTable();
+      updateDownloadLink();
+      draw();
     }
 
     // Mise à jour du tableau éditorial
     function updateRecommendationsTable() {
-      const topMovies = getActiveTop100();
       const tbody = document.getElementById('topTableBody');
       tbody.innerHTML = '';
 
       const subtitle = document.getElementById('topListSubtitle');
-      if (excludedClusters.has(kidsClusterId)) {
-        subtitle.innerHTML = `<strong>Filtre actif :</strong> Les 465 films du Cluster Jeunesse sont exclus. Le classement met en avant les œuvres narratives et matures.`;
-      } else {
-        subtitle.textContent = `100 films recommandés parmi les 4 658 de la base, classés par score estimé décroissant.`;
+      subtitle.textContent = `${currentTopMovies.length} films affichés (parmi les ${allMovies.length} de la base), classés par affinité estimée SVD.`;
+
+      if (currentTopMovies.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-tertiary);" class="mono">
+              Aucun film ne correspond à cette combinaison de filtres. Essayez d'assouplir les critères.
+            </td>
+          </tr>
+        `;
+        return;
       }
 
-      topMovies.forEach((m, idx) => {
+      currentTopMovies.forEach((m, idx) => {
         const cInfo = clusters.find(c => c.id === m.cluster) || { name: 'Autre', color: '#64748b' };
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
@@ -637,6 +964,25 @@
       });
     }
 
+    // Mise à jour du lien de téléchargement texte
+    function updateDownloadLink() {
+      const btn = document.getElementById('btnDownloadTxt');
+      const params = new URLSearchParams();
+      if (excludedClusters.size > 0) params.set('excluded', Array.from(excludedClusters).join(','));
+      if (selectedGenres.size > 0) {
+        if (genreFilterMode === 'exclude') params.set('excluded_genres', Array.from(selectedGenres).join(','));
+        else params.set('included_genres', Array.from(selectedGenres).join(','));
+      }
+      if (selectedDecade === 'classic') params.set('max_year', '1979');
+      if (selectedDecade === '80-90') { params.set('min_year', '1980'); params.set('max_year', '1999'); }
+      if (selectedDecade === '2000s') { params.set('min_year', '2000'); params.set('max_year', '2009'); }
+      if (selectedDecade === '2010s') { params.set('min_year', '2010'); params.set('max_year', '2019'); }
+      if (selectedDecade === '2020s') params.set('min_year', '2020');
+      if (selectedMinRating > 0) params.set('min_rating', selectedMinRating.toString());
+      params.set('limit', rankingLimit.toString());
+      btn.href = `/api/export?${params.toString()}`;
+    }
+
     // Rendu Canvas de la carte
     function getScreenCoords(normX, normY) {
       const rect = canvas.getBoundingClientRect();
@@ -651,7 +997,6 @@
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      // Grille de repère sobre (lignes très fines)
       ctx.strokeStyle = "rgba(255, 255, 255, 0.025)";
       ctx.lineWidth = 1;
       const gridSize = 45 * scale;
@@ -671,13 +1016,13 @@
         ctx.stroke();
       }
 
-      const top100Ids = new Set(getActiveTop100().map(m => m.id));
+      const topIdsSet = new Set(currentTopMovies.map(m => m.id));
 
-      // Rendu des 4 658 points
       allMovies.forEach(m => {
-        if (excludedClusters.has(m.cluster)) return;
+        const matchesCriteria = passesAllFilters(m);
+
         if (currentFilterMode === 'watched' && !m.watched) return;
-        if (currentFilterMode === 'top' && !top100Ids.has(m.id)) return;
+        if (currentFilterMode === 'top' && !topIdsSet.has(m.id)) return;
 
         const pos = getScreenCoords(m.x, m.y);
         if (pos.x < -20 || pos.x > rect.width + 20 || pos.y < -20 || pos.y > rect.height + 20) return;
@@ -685,7 +1030,6 @@
         const cInfo = clusters.find(c => c.id === m.cluster) || { color: '#64748b' };
 
         if (m.watched) {
-          // Film noté par l'utilisateur (Losange doré net)
           ctx.save();
           ctx.translate(pos.x, pos.y);
           ctx.rotate(Math.PI / 4);
@@ -693,8 +1037,7 @@
           const s = Math.max(4.5, 6 * scale * 0.7);
           ctx.fillRect(-s/2, -s/2, s, s);
           ctx.restore();
-        } else if (top100Ids.has(m.id)) {
-          // Film du Top 100 recommandé (Cercle bleu lumineux)
+        } else if (topIdsSet.has(m.id)) {
           ctx.save();
           ctx.fillStyle = "#2e62ea";
           ctx.beginPath();
@@ -705,15 +1048,13 @@
           ctx.stroke();
           ctx.restore();
         } else {
-          // Film standard
-          ctx.fillStyle = cInfo.color;
+          ctx.fillStyle = matchesCriteria ? cInfo.color : "rgba(100, 116, 139, 0.12)";
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, Math.max(1.8, 2.4 * scale * 0.65), 0, Math.PI * 2);
           ctx.fill();
         }
       });
 
-      // Highlight film recherché
       if (highlightedMovie) {
         const pos = getScreenCoords(highlightedMovie.x, highlightedMovie.y);
         ctx.save();
@@ -730,7 +1071,7 @@
       }
     }
 
-    // Gestion de la caméra
+    // Gestion de la caméra Canvas
     canvas.addEventListener('mousedown', (e) => {
       isDragging = true;
       dragStartX = e.clientX - offsetX;
@@ -789,7 +1130,6 @@
 
       for (let i = 0; i < allMovies.length; i++) {
         const m = allMovies[i];
-        if (excludedClusters.has(m.cluster)) continue;
         if (currentFilterMode === 'watched' && !m.watched) continue;
 
         const pos = getScreenCoords(m.x, m.y);
@@ -921,8 +1261,7 @@
           uploadFeedback.style.color = 'var(--success)';
           uploadFeedback.textContent = `✓ Profil mis à jour : ${result.matched_count} films cartographiés. Recommandations recalculées en ${result.calc_time_ms} ms.`;
 
-          draw();
-          updateRecommendationsTable();
+          applyFiltersAndUpdate();
         } else {
           uploadFeedback.style.color = 'var(--danger)';
           uploadFeedback.textContent = `Erreur : ${result.error}`;
@@ -933,21 +1272,20 @@
       }
     }
 
-    // Copier le Top 100 dans le presse-papier
+    // Copier le classement dans le presse-papier
     function copyTop100ToClipboard() {
-      const topMovies = getActiveTop100();
-      let text = "RANG | TITRE (ANNÉE) | NOTE ESTIMÉE (/5)\\n";
-      text += "-----------------------------------------\\n";
-      topMovies.forEach((m, idx) => {
-        text += `${(idx + 1).toString().padStart(3, '0')}. ${m.title} (${m.year || 'N/A'}) : ${m.pred.toFixed(2)}/5\\n`;
+      let text = `CLASSEMENT PERSONNALISÉ LATERBOXD (${currentTopMovies.length} FILMS)\n`;
+      text += "---------------------------------------------------------\n";
+      currentTopMovies.forEach((m, idx) => {
+        text += `${(idx + 1).toString().padStart(3, '0')}. ${m.title} (${m.year || 'N/A'}) : ${m.pred.toFixed(2)}/5 [${m.genres || ''}]\n`;
       });
 
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.getElementById('btnCopyTable');
-        btn.textContent = '✓ 100 titres copiés';
+        btn.textContent = `✓ ${currentTopMovies.length} titres copiés`;
         btn.style.color = 'var(--success)';
         setTimeout(() => {
-          btn.textContent = 'Copier les 100 titres';
+          btn.textContent = 'Copier les titres';
           btn.style.color = 'var(--text-primary)';
         }, 2200);
       });
