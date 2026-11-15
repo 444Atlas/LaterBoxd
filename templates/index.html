@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaterBoxd — Cartographie Latente & Filtrage de Recommandations</title>
+  <style>
+    :root {
+      --bg-page: #08090c;
+      --bg-surface: #0f1116;
+      --bg-subtle: #14171f;
+      --border: #20242e;
+      --border-strong: #333a4a;
+      --text-primary: #edf0f5;
+      --text-secondary: #8891a2;
+      --text-tertiary: #4f5666;
+      --accent: #2e62ea;
+      --accent-hover: #3d72fb;
+      --accent-dim: rgba(46, 98, 234, 0.12);
+      --danger: #d94343;
+      --danger-dim: rgba(217, 67, 67, 0.12);
+      --success: #1ea869;
+      --gold: #e5b32e;
+      --radius: 3px;
+      --font-mono: ui-monospace, SFMono-Regular, "Roboto Mono", Menlo, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: var(--font-mono); }
+
+    /* Conteneur de mise en page */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+
+    /* Espacements verticaux radicaux (py-24, py-32) */
+    .section-py {
+      padding-top: 6rem;
+      padding-bottom: 6rem;
+    }
+
+    .border-b-subtle { border-bottom: 1px solid var(--border); }
+    .border-t-subtle { border-top: 1px solid var(--border); }
+
+    /* Boutons et éléments interactifs à rayon strict */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.95rem;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background-color: var(--bg-subtle);
+      border-color: var(--border-strong);
+    }
+    .btn-primary {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+    .btn-danger-active {
+      background-color: var(--danger-dim);
+      border-color: var(--danger);
+      color: #ff9b9b;
+    }
+    .btn-danger-active:hover {
+      background-color: rgba(217, 67, 67, 0.2);
+    }
+
+    /* Tableaux éditoriaux */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .data-table th {
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-strong);
+      background-color: var(--bg-page);
+    }
+    .data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: background-color 140ms ease-out;
+    }
+    .data-table tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Zone de dépôt Letterboxd */
+    .dropzone {
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius);
+      padding: 1.75rem 1.5rem;
+      background-color: var(--bg-surface);
+      transition: border-color 160ms ease-out, background-color 160ms ease-out;
+      cursor: pointer;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background-color: var(--accent-dim);
+    }
+
+    /* Canvas */
+    #mapCanvas {
+      display: block;
+      width: 100%;
+      height: 600px;
+      background-color: #050608;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: grab;
+    }
+    #mapCanvas:active { cursor: grabbing; }
+
+    /* Tooltip */
+    #movieTooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      z-index: 50;
+      background-color: #0b0d12;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      width: 280px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Scrollbars sobres */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-page); }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+  </style>
+</head>
+<body>
+
+  <!-- EN-TÊTE ÉDITORIAL PLEINE LARGEUR -->
+  <header class="border-b-subtle" style="background-color: var(--bg-page); position: sticky; top: 0; z-index: 40;">
+    <div class="container" style="display: flex; align-items: center; justify-content: space-between; height: 56px;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span class="mono" style="font-weight: 700; font-size: 13px; letter-spacing: 0.05em; color: var(--text-primary);">
+          LATERBOXD
+        </span>
+        <span style="color: var(--text-tertiary);">/</span>
+        <span class="mono" style="font-size: 12px; color: var(--text-secondary);">
+          MOTEUR COLLABORATIF SVD
+        </span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 1.5rem;" class="mono">
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 12px; color: var(--text-secondary);">
+          <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--success);"></span>
+          <span>FastAPI : Port 8000</span>
+        </div>
+        <a href="#section-map" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Aller à la carte</a>
+        <a href="#section-top" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Top 100</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- SECTION 01 : HERO ASYMÉTRIQUE (py-24) -->
+  <section class="section-py border-b-subtle">
+    <div class="container" style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 4.5rem; align-items: start;">
+      
+      <!-- Colonne gauche : Éditorial & Action (60%) -->
+      <div>
+        <div class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 1rem;">
+          01. PROJECTION SPATIALE & DÉCOMPOSITION
+        </div>
+        
+        <h1 style="font-size: 2.35rem; font-weight: 750; line-height: 1.18; letter-spacing: -0.025em; color: #ffffff; margin-bottom: 1.75rem;">
+          Cartographie collaborative et filtrage par partitionnement de l'espace latent.
+        </h1>
+
+        <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 2.25rem;">
+          Le modèle SVD projette 4 658 films dans un espace vectoriel à 100 dimensions entraîné sur 6 138 722 évaluations Letterboxd. Lorsqu'un utilisateur a attribué des notes élevées à des films d'enfance ou d'animation, la régression Ridge biaise l'ensemble du profil vers la production jeunesse. Cette interface permet d'isoler ce cluster dans l'espace 2D pour l'exclure du calcul des recommandations.
+        </p>
+
+        <!-- Dépôt de fichier Letterboxd CSV -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;" class="mono">
+            CHARGER UN EXPORT LETTERBOXD (RATINGS.CSV)
+          </div>
+          <div id="dropzone" class="dropzone">
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;" />
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+              <div>
+                <div style="font-weight: 600; color: var(--text-primary); font-size: 13px;" id="dropzoneLabel">
+                  Déposez votre fichier ratings.csv ici ou cliquez pour parcourir
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 0.25rem;">
+                  Projection Ridge en temps réel sans ré-entraîner la matrice globale
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('csvFileInput').click();">
+                Sélectionner un fichier
+              </button>
+            </div>
+          </div>
+          <div id="uploadFeedback" style="display: none; margin-top: 0.75rem; font-size: 12px;" class="mono"></div>
+        </div>
+
+      </div>
+
+      <!-- Colonne droite : Spécifications techniques du modèle (40%) -->
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.75rem;">
+        <div class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+          SPÉCIFICATIONS DU MODÈLE ACTIF
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse;" class="mono">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Algorithme</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">Surprise SVD</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Facteurs latents</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">100 composantes</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Notations d'entraînement</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">6 138 722</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Films catalogués</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">4 658</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Utilisateurs actifs</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">6 515</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Réduction 2D</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">PCA(25) + UMAP(2)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Profil chargé</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--gold); font-weight: 600; font-size: 12px;" id="profileLabel">ratings.csv (211 vus)</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.65rem 0; color: var(--text-secondary); font-size: 12px;">Partitionnement</td>
+              <td style="padding: 0.65rem 0; text-align: right; color: var(--text-primary); font-weight: 600; font-size: 12px;">8 clusters K-Means</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+          <strong style="color: var(--text-primary);">Cluster #3 isolé :</strong> concentre 32,9 % des titres d'animation et de comédies familiales, identifié automatiquement comme source de distorsion du Top 100.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 02 : LA CARTE LATENTE INTERACTIVE (py-24) -->
+  <section id="section-map" class="section-py border-b-subtle">
+    <div class="container">
+      
+      <!-- En-tête de section -->
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 2rem;">
+        <div>
+          <div class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.5rem;">
+            02. EXPLORATION VECTORIELLE
+          </div>
+          <h2 style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
+            Espace Latent UMAP & Distribution des 8 Groupes
+          </h2>
+        </div>
+
+        <!-- Action directe : Bannissement du cluster jeunesse -->
+        <button id="btnExcludeKids" class="btn" style="padding: 0.65rem 1.25rem; font-weight: 600;">
+          <span id="excludeKidsDot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: var(--danger);"></span>
+          <span id="excludeKidsLabel">Exclure le cluster Animation & Jeunesse</span>
+        </button>
+      </div>
+
+      <!-- Barre de filtrage & Recherche -->
+      <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; margin-bottom: 1.25rem;">
+        
+        <!-- Recherche textuelle -->
+        <div style="position: relative;">
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Rechercher un film pour le localiser sur la carte (ex: Ratatouille, Dark Knight, Saw)..." 
+            style="width: 100%; height: 42px; background-color: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 1rem; color: var(--text-primary); font-size: 13px; outline: none; transition: border-color 150ms ease-out;"
+          />
+          <div id="searchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background-color: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius); z-index: 60; max-height: 240px; overflow-y: auto; display: none;"></div>
+        </div>
+
+        <!-- Modes de visualisation -->
+        <div style="display: flex; gap: 0.35rem;" class="mono">
+          <button id="modeAllBtn" class="btn btn-primary" onclick="setFilterMode('all');">Tous (4 658)</button>
+          <button id="modeWatchedBtn" class="btn" onclick="setFilterMode('watched');">Vus (211)</button>
+          <button id="modeTopBtn" class="btn" onclick="setFilterMode('top');">Top 100</button>
+        </div>
+
+        <!-- Contrôles de caméra -->
+        <div style="display: flex; gap: 0.35rem;" class="mono">
+          <button class="btn" onclick="adjustZoom(1.25);">Zoom +</button>
+          <button class="btn" onclick="adjustZoom(0.8);">Zoom -</button>
+          <button class="btn" onclick="resetCamera();">Recentrer</button>
+        </div>
+      </div>
+
+      <!-- Canvas de la carte -->
+      <div style="position: relative;">
+        <canvas id="mapCanvas"></canvas>
+
+        <!-- Tooltip d'inspection -->
+        <div id="movieTooltip">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+            <div id="ttTitle" style="font-weight: 700; color: #ffffff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px;"></div>
+            <div id="ttYear" class="mono" style="font-size: 11px; color: var(--text-secondary);"></div>
+          </div>
+          <div style="font-size: 11px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span id="ttClusterColor" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;"></span>
+            <span id="ttClusterName" style="color: var(--text-secondary);"></span>
+          </div>
+          <div id="ttGenres" style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid var(--border); padding-top: 0.4rem;" class="mono">
+            <span style="color: var(--text-secondary);">Note estimée :</span>
+            <span id="ttPred" style="font-weight: 700; color: var(--accent);"></span>
+          </div>
+          <div id="ttWatchedRow" style="display: none; justify-content: space-between; font-size: 11px; color: var(--gold); margin-top: 0.2rem;" class="mono">
+            <span>Votre note Letterboxd :</span>
+            <span id="ttUserRating" style="font-weight: 700;"></span>
+          </div>
+        </div>
+
+        <!-- Légende typographique intégrée (bas gauche) -->
+        <div class="mono" style="position: absolute; bottom: 1rem; left: 1rem; background-color: rgba(11, 13, 18, 0.92); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.65rem 0.85rem; font-size: 11px; display: flex; gap: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #64748b;"></span>
+            <span style="color: var(--text-secondary);">Films de base</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="display: inline-block; width: 7px; height: 7px; transform: rotate(45deg); background-color: var(--gold);"></span>
+            <span style="color: var(--gold); font-weight: 600;">Vos films vus</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent);"></span>
+            <span style="color: #93b5ff; font-weight: 600;">Top 100 Recommandations</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Liste asymétrique des clusters (pas de Bento 3x3 !) -->
+      <div style="margin-top: 2rem;">
+        <div class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.75rem;">
+          Nomenclature des 8 clusters identifiés
+        </div>
+        <div id="clustersList" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
+          <!-- Rempli par JavaScript -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 03 : TABLEAU ÉDITORIAL DU TOP 100 (py-24) -->
+  <section id="section-top" class="section-py">
+    <div class="container">
+      
+      <!-- En-tête de section -->
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 2rem;">
+        <div>
+          <div class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.5rem;">
+            03. CLASSEMENT DES RECOMMANDATIONS
+          </div>
+          <h2 style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.02em;">
+            Top 100 Personnalisé (Projection Ridge SVD)
+          </h2>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 0.25rem;" id="topListSubtitle">
+            100 films recommandés parmi les 4 658 de la base, classés par score estimé décroissant.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;" class="mono">
+          <a id="btnDownloadTxt" href="/api/export?excluded_cluster=3" class="btn btn-primary" download="recommandations_laterboxd.txt">
+            Télécharger le rapport texte (.txt)
+          </a>
+          <button id="btnCopyTable" class="btn" onclick="copyTop100ToClipboard();">
+            Copier les 100 titres
+          </button>
+        </div>
+      </div>
+
+      <!-- Tableau éditorial plein format -->
+      <div style="border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background-color: var(--bg-surface);">
+        <table class="data-table" id="recommendationsTable">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Rang</th>
+              <th>Titre du Film</th>
+              <th style="width: 90px;">Année</th>
+              <th style="width: 220px;">Cluster Sémantique</th>
+              <th>Genres</th>
+              <th style="width: 110px; text-align: right;">Note Moyenne</th>
+              <th style="width: 120px; text-align: right;">Note Estimée</th>
+            </tr>
+          </thead>
+          <tbody id="topTableBody">
+            <!-- Rempli par JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PIED DE PAGE TECHNIQUE -->
+  <footer class="border-t-subtle" style="background-color: var(--bg-page); padding: 3rem 0; font-size: 12px; color: var(--text-tertiary);">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center;" class="mono">
+      <div>LATERBOXD — Système de Recommandation & Cartographie Collaborative</div>
+      <div>Python 3.12 • Surprise SVD • Polars • UMAP • FastAPI</div>
+    </div>
+  </footer>
+
+  <!-- LOGIQUE APPLICATIVE -->
+  <script>
+    let appData = null;
+    let allMovies = [];
+    let clusters = [];
+    let kidsClusterId = 3;
+    let excludedClusters = new Set();
+    let currentFilterMode = 'all'; // 'all', 'watched', 'top'
+    let highlightedMovie = null;
+
+    // Éléments Canvas
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    let scale = 1.0;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    // Initialisation
+    async function init() {
+      try {
+        const res = await fetch('/api/data');
+        appData = await res.json();
+        clusters = appData.metadata.clusters;
+        kidsClusterId = appData.metadata.kids_cluster_id;
+        allMovies = appData.movies;
+
+        renderClustersList();
+        resizeCanvas();
+        updateRecommendationsTable();
+      } catch (err) {
+        console.error("Erreur de chargement des données :", err);
+      }
+    }
+
+    // Gestion des dimensions Canvas
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      draw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Rendu des clusters (liste asymétrique, 4 colonnes, pas de bento)
+    function renderClustersList() {
+      const container = document.getElementById('clustersList');
+      container.innerHTML = '';
+
+      clusters.forEach(c => {
+        const isKids = c.id === kidsClusterId;
+        const isExcluded = excludedClusters.has(c.id);
+
+        const card = document.createElement('div');
+        card.style.cssText = `
+          background-color: var(--bg-surface);
+          border: 1px solid ${isExcluded ? 'var(--danger)' : 'var(--border)'};
+          border-radius: var(--radius);
+          padding: 0.85rem 1rem;
+          cursor: pointer;
+          transition: border-color 150ms ease-out, background-color 150ms ease-out;
+          opacity: ${isExcluded ? '0.45' : '1.0'};
+        `;
+        card.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${c.color};"></span>
+              <span class="mono" style="font-weight: 700; font-size: 11px; color: var(--text-primary);">Cluster #${c.id}</span>
+            </div>
+            <span class="mono" style="font-size: 10px; color: var(--text-secondary);">${c.count} films</span>
+          </div>
+          <div style="font-size: 12px; font-weight: 600; color: ${isExcluded ? 'var(--danger)' : 'var(--text-primary)'}; margin-bottom: 0.25rem;">
+            ${c.name}
+          </div>
+          <div style="font-size: 11px; color: var(--text-tertiary);" class="mono">
+            ${isKids ? '<strong style="color: var(--danger);">[Cible filtrage : 32.9% jeunesse]</strong>' : `Ratio jeunesse : ${(c.kids_ratio * 100).toFixed(1)}%`}
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          toggleClusterExclusion(c.id);
+        });
+        container.appendChild(card);
+      });
+    }
+
+    // Toggle d'exclusion de cluster
+    function toggleClusterExclusion(clusterId) {
+      if (excludedClusters.has(clusterId)) {
+        excludedClusters.delete(clusterId);
+      } else {
+        excludedClusters.add(clusterId);
+      }
+      updateExclusionButtonState();
+      renderClustersList();
+      draw();
+      updateRecommendationsTable();
+      updateDownloadLink();
+    }
+
+    // Bouton d'exclusion rapide du cluster Jeunesse
+    const btnExcludeKids = document.getElementById('btnExcludeKids');
+    const excludeKidsLabel = document.getElementById('excludeKidsLabel');
+    const excludeKidsDot = document.getElementById('excludeKidsDot');
+
+    function updateExclusionButtonState() {
+      const isExcluded = excludedClusters.has(kidsClusterId);
+      if (isExcluded) {
+        btnExcludeKids.className = 'btn btn-danger-active';
+        excludeKidsLabel.textContent = 'Cluster Jeunesse Exclu (Cliquer pour réintégrer)';
+        excludeKidsDot.style.backgroundColor = 'var(--danger)';
+      } else {
+        btnExcludeKids.className = 'btn';
+        excludeKidsLabel.textContent = 'Exclure le cluster Animation & Jeunesse';
+        excludeKidsDot.style.backgroundColor = '#64748b';
+      }
+    }
+
+    btnExcludeKids.addEventListener('click', () => {
+      toggleClusterExclusion(kidsClusterId);
+    });
+
+    function updateDownloadLink() {
+      const btn = document.getElementById('btnDownloadTxt');
+      const excludedArray = Array.from(excludedClusters);
+      btn.href = `/api/export?excluded=${excludedArray.join(',')}`;
+    }
+
+    // Calcul du Top 100 actif
+    function getActiveTop100() {
+      const eligible = allMovies.filter(m => !m.watched && !excludedClusters.has(m.cluster));
+      eligible.sort((a, b) => b.pred - a.pred);
+      return eligible.slice(0, 100);
+    }
+
+    // Mise à jour du tableau éditorial
+    function updateRecommendationsTable() {
+      const topMovies = getActiveTop100();
+      const tbody = document.getElementById('topTableBody');
+      tbody.innerHTML = '';
+
+      const subtitle = document.getElementById('topListSubtitle');
+      if (excludedClusters.has(kidsClusterId)) {
+        subtitle.innerHTML = `<strong>Filtre actif :</strong> Les 465 films du Cluster Jeunesse sont exclus. Le classement met en avant les œuvres narratives et matures.`;
+      } else {
+        subtitle.textContent = `100 films recommandés parmi les 4 658 de la base, classés par score estimé décroissant.`;
+      }
+
+      topMovies.forEach((m, idx) => {
+        const cInfo = clusters.find(c => c.id === m.cluster) || { name: 'Autre', color: '#64748b' };
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.innerHTML = `
+          <td class="mono" style="color: var(--text-secondary); font-weight: 600;">${(idx + 1).toString().padStart(3, '0')}</td>
+          <td style="font-weight: 600; color: #ffffff;">${m.title}</td>
+          <td class="mono" style="color: var(--text-secondary);">${m.year || '—'}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: ${cInfo.color};"></span>
+              <span style="font-size: 12px; color: var(--text-secondary);">${cInfo.name}</span>
+            </div>
+          </td>
+          <td style="color: var(--text-tertiary); font-size: 12px;">${m.genres || 'Non répertorié'}</td>
+          <td class="mono" style="text-align: right; color: var(--text-secondary);">${m.avg_rating ? m.avg_rating.toFixed(2) : '—'}</td>
+          <td class="mono" style="text-align: right; font-weight: 700; color: var(--accent);">${m.pred.toFixed(2)} / 5</td>
+        `;
+        tr.addEventListener('click', () => {
+          highlightMovieOnMap(m);
+          window.location.hash = '#section-map';
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Rendu Canvas de la carte
+    function getScreenCoords(normX, normY) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.width / 2 + offsetX;
+      const cy = rect.height / 2 + offsetY;
+      const sx = cx + (normX / 100) * (rect.width * 0.44) * scale;
+      const sy = cy + (normY / 100) * (rect.height * 0.44) * scale;
+      return { x: sx, y: sy };
+    }
+
+    function draw() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Grille de repère sobre (lignes très fines)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.025)";
+      ctx.lineWidth = 1;
+      const gridSize = 45 * scale;
+      const startX = (rect.width / 2 + offsetX) % gridSize;
+      const startY = (rect.height / 2 + offsetY) % gridSize;
+
+      for (let x = startX; x < rect.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, rect.height);
+        ctx.stroke();
+      }
+      for (let y = startY; y < rect.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(rect.width, y);
+        ctx.stroke();
+      }
+
+      const top100Ids = new Set(getActiveTop100().map(m => m.id));
+
+      // Rendu des 4 658 points
+      allMovies.forEach(m => {
+        if (excludedClusters.has(m.cluster)) return;
+        if (currentFilterMode === 'watched' && !m.watched) return;
+        if (currentFilterMode === 'top' && !top100Ids.has(m.id)) return;
+
+        const pos = getScreenCoords(m.x, m.y);
+        if (pos.x < -20 || pos.x > rect.width + 20 || pos.y < -20 || pos.y > rect.height + 20) return;
+
+        const cInfo = clusters.find(c => c.id === m.cluster) || { color: '#64748b' };
+
+        if (m.watched) {
+          // Film noté par l'utilisateur (Losange doré net)
+          ctx.save();
+          ctx.translate(pos.x, pos.y);
+          ctx.rotate(Math.PI / 4);
+          ctx.fillStyle = "#e5b32e";
+          const s = Math.max(4.5, 6 * scale * 0.7);
+          ctx.fillRect(-s/2, -s/2, s, s);
+          ctx.restore();
+        } else if (top100Ids.has(m.id)) {
+          // Film du Top 100 recommandé (Cercle bleu lumineux)
+          ctx.save();
+          ctx.fillStyle = "#2e62ea";
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, Math.max(3.5, 4.8 * scale * 0.75), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          // Film standard
+          ctx.fillStyle = cInfo.color;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, Math.max(1.8, 2.4 * scale * 0.65), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Highlight film recherché
+      if (highlightedMovie) {
+        const pos = getScreenCoords(highlightedMovie.x, highlightedMovie.y);
+        ctx.save();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 22, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(46, 98, 234, 0.6)";
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Gestion de la caméra
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX - offsetX;
+      dragStartY = e.clientY - offsetY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        offsetX = e.clientX - dragStartX;
+        offsetY = e.clientY - dragStartY;
+        draw();
+        return;
+      }
+      handleHover(e);
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.87;
+      scale = Math.max(0.4, Math.min(6.0, scale * factor));
+      draw();
+    }, { passive: false });
+
+    function adjustZoom(factor) {
+      scale = Math.max(0.4, Math.min(6.0, scale * factor));
+      draw();
+    }
+
+    function resetCamera() {
+      scale = 1.0;
+      offsetX = 0;
+      offsetY = 0;
+      highlightedMovie = null;
+      draw();
+    }
+
+    function setFilterMode(mode) {
+      currentFilterMode = mode;
+      document.getElementById('modeAllBtn').className = mode === 'all' ? 'btn btn-primary' : 'btn';
+      document.getElementById('modeWatchedBtn').className = mode === 'watched' ? 'btn btn-primary' : 'btn';
+      document.getElementById('modeTopBtn').className = mode === 'top' ? 'btn btn-primary' : 'btn';
+      draw();
+    }
+
+    // Tooltip d'inspection
+    const tooltip = document.getElementById('movieTooltip');
+    function handleHover(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      let closest = null;
+      let minDistance = 14;
+
+      for (let i = 0; i < allMovies.length; i++) {
+        const m = allMovies[i];
+        if (excludedClusters.has(m.cluster)) continue;
+        if (currentFilterMode === 'watched' && !m.watched) continue;
+
+        const pos = getScreenCoords(m.x, m.y);
+        const dist = Math.hypot(pos.x - mouseX, pos.y - mouseY);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = m;
+        }
+      }
+
+      if (closest) {
+        const cInfo = clusters.find(c => c.id === closest.cluster) || { name: 'Cluster', color: '#64748b' };
+        document.getElementById('ttTitle').textContent = closest.title;
+        document.getElementById('ttYear').textContent = closest.year || '—';
+        document.getElementById('ttClusterColor').style.backgroundColor = cInfo.color;
+        document.getElementById('ttClusterName').textContent = cInfo.name;
+        document.getElementById('ttGenres').textContent = closest.genres || 'Non renseigné';
+        document.getElementById('ttPred').textContent = `${closest.pred.toFixed(2)} / 5`;
+
+        const watchedRow = document.getElementById('ttWatchedRow');
+        if (closest.watched) {
+          watchedRow.style.display = 'flex';
+          document.getElementById('ttUserRating').textContent = `${closest.user_rating} / 5 ★`;
+        } else {
+          watchedRow.style.display = 'none';
+        }
+
+        tooltip.style.left = `${Math.min(rect.width - 300, mouseX + 15)}px`;
+        tooltip.style.top = `${Math.min(rect.height - 140, mouseY + 15)}px`;
+        tooltip.style.display = 'block';
+      } else {
+        tooltip.style.display = 'none';
+      }
+    }
+
+    function highlightMovieOnMap(m) {
+      highlightedMovie = m;
+      const rect = canvas.getBoundingClientRect();
+      offsetX = -(m.x / 100) * (rect.width * 0.44) * scale;
+      offsetY = -(m.y / 100) * (rect.height * 0.44) * scale;
+      scale = 1.9;
+      draw();
+    }
+
+    // Barre de recherche textuelle
+    const searchInput = document.getElementById('searchInput');
+    const searchDropdown = document.getElementById('searchDropdown');
+
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (q.length < 2) {
+        searchDropdown.style.display = 'none';
+        return;
+      }
+      const matches = allMovies.filter(m => m.title.toLowerCase().includes(q)).slice(0, 7);
+      if (matches.length === 0) {
+        searchDropdown.innerHTML = '<div style="padding: 0.75rem 1rem; color: var(--text-tertiary); font-size: 12px;">Aucun film correspondant.</div>';
+        searchDropdown.style.display = 'block';
+        return;
+      }
+      searchDropdown.innerHTML = '';
+      matches.forEach(m => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px;';
+        item.innerHTML = `
+          <div>
+            <strong style="color: #ffffff;">${m.title}</strong>
+            <span style="color: var(--text-secondary); font-size: 11px; margin-left: 0.35rem;">(${m.year || 'N/A'})</span>
+          </div>
+          <span class="mono" style="font-size: 11px; color: var(--accent); font-weight: 600;">${m.pred.toFixed(2)}/5</span>
+        `;
+        item.addEventListener('click', () => {
+          highlightMovieOnMap(m);
+          searchInput.value = m.title;
+          searchDropdown.style.display = 'none';
+        });
+        searchDropdown.appendChild(item);
+      });
+      searchDropdown.style.display = 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.style.display = 'none';
+      }
+    });
+
+    // Upload CSV Letterboxd
+    const dropzone = document.getElementById('dropzone');
+    const csvFileInput = document.getElementById('csvFileInput');
+    const uploadFeedback = document.getElementById('uploadFeedback');
+
+    ['dragenter', 'dragover'].forEach(name => {
+      dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) uploadCSV(files[0]);
+    });
+
+    csvFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) uploadCSV(e.target.files[0]);
+    });
+
+    async function uploadCSV(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      uploadFeedback.style.display = 'block';
+      uploadFeedback.style.color = 'var(--text-secondary)';
+      uploadFeedback.textContent = `Calcul de la projection Ridge en cours pour ${file.name}...`;
+
+      try {
+        const res = await fetch('/api/upload-csv', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          allMovies = result.movies;
+          document.getElementById('profileLabel').textContent = `${file.name} (${result.matched_count} vus)`;
+          document.getElementById('modeWatchedBtn').textContent = `Vus (${result.matched_count})`;
+
+          uploadFeedback.style.color = 'var(--success)';
+          uploadFeedback.textContent = `✓ Profil mis à jour : ${result.matched_count} films cartographiés. Recommandations recalculées en ${result.calc_time_ms} ms.`;
+
+          draw();
+          updateRecommendationsTable();
+        } else {
+          uploadFeedback.style.color = 'var(--danger)';
+          uploadFeedback.textContent = `Erreur : ${result.error}`;
+        }
+      } catch (err) {
+        uploadFeedback.style.color = 'var(--danger)';
+        uploadFeedback.textContent = `Échec de l'envoi : ${err.message}`;
+      }
+    }
+
+    // Copier le Top 100 dans le presse-papier
+    function copyTop100ToClipboard() {
+      const topMovies = getActiveTop100();
+      let text = "RANG | TITRE (ANNÉE) | NOTE ESTIMÉE (/5)\\n";
+      text += "-----------------------------------------\\n";
+      topMovies.forEach((m, idx) => {
+        text += `${(idx + 1).toString().padStart(3, '0')}. ${m.title} (${m.year || 'N/A'}) : ${m.pred.toFixed(2)}/5\\n`;
+      });
+
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('btnCopyTable');
+        btn.textContent = '✓ 100 titres copiés';
+        btn.style.color = 'var(--success)';
+        setTimeout(() => {
+          btn.textContent = 'Copier les 100 titres';
+          btn.style.color = 'var(--text-primary)';
+        }, 2200);
+      });
+    }
+
+    // Lancement
+    init();
+  </script>
+</body>
+</html>
