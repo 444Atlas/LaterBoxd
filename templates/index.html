@@ -450,25 +450,49 @@
         <!-- Corps des filtres -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           
-          <!-- FILTRE 1 : GENRES AVEC MODE EXCLUSION / INCLUSION -->
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
-              <span class="mono" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">
-                Filtre par Genres cinématographiques
-              </span>
-              <div style="display: flex; align-items: center; gap: 0.5rem;" class="mono">
-                <span style="font-size: 11px; color: var(--text-tertiary);">Comportement des clics :</span>
-                <button id="genreModeExcludeBtn" class="btn btn-genre-exclude" style="padding: 0.25rem 0.55rem; font-size: 11px;" onclick="setGenreMode('exclude');">
-                  Bannir ces genres (Exclusion)
-                </button>
-                <button id="genreModeIncludeBtn" class="btn" style="padding: 0.25rem 0.55rem; font-size: 11px;" onclick="setGenreMode('include');">
-                  Exiger ces genres (Inclusion)
+          <!-- FILTRE 1 : GENRES AVEC INCLUSION ET EXCLUSION SIMULTANÉES -->
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            
+            <!-- LIGNE 1A : GENRES CIBLÉS (INCLUSION) -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span class="mono" style="font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase;">
+                    [+] Genres ciblés (Inclusion)
+                  </span>
+                  <span style="font-size: 11px; color: var(--text-tertiary);">
+                    — Le film doit comporter au moins un de ces genres
+                  </span>
+                </div>
+                <button class="btn" style="padding: 0.15rem 0.45rem; font-size: 10px; color: var(--text-tertiary);" onclick="clearIncludedGenres();">
+                  Effacer
                 </button>
               </div>
+              <div id="includedGenrePills" style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                <!-- Rempli par JavaScript -->
+              </div>
             </div>
-            <div id="genrePills" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-              <!-- Rempli par JavaScript -->
+
+            <!-- LIGNE 1B : GENRES BANNIS (EXCLUSION) -->
+            <div style="border-top: 1px dashed var(--border); padding-top: 0.85rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span class="mono" style="font-size: 11px; font-weight: 700; color: var(--danger); text-transform: uppercase;">
+                    [✕] Genres bannis (Exclusion stricte)
+                  </span>
+                  <span style="font-size: 11px; color: var(--text-tertiary);">
+                    — Tout film comportant l'un de ces genres est immédiatement éliminé
+                  </span>
+                </div>
+                <button class="btn" style="padding: 0.15rem 0.45rem; font-size: 10px; color: var(--text-tertiary);" onclick="clearExcludedGenres();">
+                  Effacer
+                </button>
+              </div>
+              <div id="excludedGenrePills" style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                <!-- Rempli par JavaScript -->
+              </div>
             </div>
+
           </div>
 
           <!-- FILTRE 2 & 3 : PÉRIODE ET NOTE LETTERBOXD MINIMALE -->
@@ -574,8 +598,8 @@
 
     // ÉTATS DE FILTRAGE DU TOP PERSONNALISÉ
     let excludedClusters = new Set();
-    let selectedGenres = new Set();
-    let genreFilterMode = 'exclude'; // 'exclude' (bannir) | 'include' (exiger)
+    let excludedGenres = new Set();
+    let includedGenres = new Set();
     let selectedDecade = 'all'; // 'all', 'classic', '80-90', '2000s', '2010s', '2020s'
     let selectedMinRating = 0; // 0, 3.2, 3.5, 3.8, 4.0
     let rankingLimit = 100; // 25, 50, 100, 200
@@ -717,50 +741,60 @@
       toggleClusterExclusion(kidsClusterId);
     });
 
-    // Rendu des boutons de genres
+    // Rendu des boutons de genres (Inclusion & Exclusion simultanées)
     function renderGenrePills() {
-      const container = document.getElementById('genrePills');
-      container.innerHTML = '';
+      const incContainer = document.getElementById('includedGenrePills');
+      const excContainer = document.getElementById('excludedGenrePills');
+      incContainer.innerHTML = '';
+      excContainer.innerHTML = '';
 
       GENRES_LIST.forEach(g => {
-        const isSelected = selectedGenres.has(g.id);
-        const btn = document.createElement('button');
-        
-        let styleClass = 'btn';
-        let prefix = '';
-
-        if (isSelected) {
-          if (genreFilterMode === 'exclude') {
-            styleClass = 'btn btn-genre-exclude';
-            prefix = '✕ ';
+        // Bouton pour la ligne Inclusion
+        const isInc = includedGenres.has(g.id);
+        const incBtn = document.createElement('button');
+        incBtn.className = isInc ? 'btn btn-genre-include' : 'btn';
+        incBtn.style.cssText = 'padding: 0.28rem 0.6rem; font-size: 11px;';
+        incBtn.innerHTML = `<span>${isInc ? '+ ' : ''}${g.label}</span>`;
+        incBtn.addEventListener('click', () => {
+          if (includedGenres.has(g.id)) {
+            includedGenres.delete(g.id);
           } else {
-            styleClass = 'btn btn-genre-include';
-            prefix = '✓ ';
-          }
-        }
-
-        btn.className = styleClass;
-        btn.style.cssText = 'padding: 0.35rem 0.65rem; font-size: 12px;';
-        btn.innerHTML = `<span>${prefix}${g.label}</span>`;
-        
-        btn.addEventListener('click', () => {
-          if (selectedGenres.has(g.id)) {
-            selectedGenres.delete(g.id);
-          } else {
-            selectedGenres.add(g.id);
+            includedGenres.add(g.id);
+            excludedGenres.delete(g.id); // Évite toute contradiction
           }
           renderGenrePills();
           applyFiltersAndUpdate();
         });
+        incContainer.appendChild(incBtn);
 
-        container.appendChild(btn);
+        // Bouton pour la ligne Exclusion
+        const isExc = excludedGenres.has(g.id);
+        const excBtn = document.createElement('button');
+        excBtn.className = isExc ? 'btn btn-genre-exclude' : 'btn';
+        excBtn.style.cssText = 'padding: 0.28rem 0.6rem; font-size: 11px;';
+        excBtn.innerHTML = `<span>${isExc ? '✕ ' : ''}${g.label}</span>`;
+        excBtn.addEventListener('click', () => {
+          if (excludedGenres.has(g.id)) {
+            excludedGenres.delete(g.id);
+          } else {
+            excludedGenres.add(g.id);
+            includedGenres.delete(g.id); // Évite toute contradiction
+          }
+          renderGenrePills();
+          applyFiltersAndUpdate();
+        });
+        excContainer.appendChild(excBtn);
       });
     }
 
-    function setGenreMode(mode) {
-      genreFilterMode = mode;
-      document.getElementById('genreModeExcludeBtn').className = mode === 'exclude' ? 'btn btn-genre-exclude' : 'btn';
-      document.getElementById('genreModeIncludeBtn').className = mode === 'include' ? 'btn btn-genre-include' : 'btn';
+    function clearIncludedGenres() {
+      includedGenres.clear();
+      renderGenrePills();
+      applyFiltersAndUpdate();
+    }
+
+    function clearExcludedGenres() {
+      excludedGenres.clear();
       renderGenrePills();
       applyFiltersAndUpdate();
     }
@@ -794,18 +828,17 @@
 
     // Raccourci 1-clic : Bannir Animation & Jeunesse
     function quickToggleKidsBan() {
-      const isKidsActive = selectedGenres.has('animation') && selectedGenres.has('family') && excludedClusters.has(kidsClusterId);
+      const isKidsActive = excludedGenres.has('animation') && excludedGenres.has('family') && excludedClusters.has(kidsClusterId);
       if (isKidsActive) {
-        selectedGenres.delete('animation');
-        selectedGenres.delete('family');
+        excludedGenres.delete('animation');
+        excludedGenres.delete('family');
         excludedClusters.delete(kidsClusterId);
       } else {
-        genreFilterMode = 'exclude';
-        selectedGenres.add('animation');
-        selectedGenres.add('family');
+        excludedGenres.add('animation');
+        excludedGenres.add('family');
+        includedGenres.delete('animation');
+        includedGenres.delete('family');
         excludedClusters.add(kidsClusterId);
-        document.getElementById('genreModeExcludeBtn').className = 'btn btn-genre-exclude';
-        document.getElementById('genreModeIncludeBtn').className = 'btn';
       }
       updateExclusionButtonState();
       renderClustersList();
@@ -816,8 +849,8 @@
     // Réinitialiser tous les filtres
     function resetAllFilters() {
       excludedClusters.clear();
-      selectedGenres.clear();
-      genreFilterMode = 'exclude';
+      excludedGenres.clear();
+      includedGenres.clear();
       selectedDecade = 'all';
       selectedMinRating = 0;
       rankingLimit = 100;
@@ -825,9 +858,6 @@
       updateExclusionButtonState();
       renderClustersList();
       renderGenrePills();
-
-      document.getElementById('genreModeExcludeBtn').className = 'btn btn-genre-exclude';
-      document.getElementById('genreModeIncludeBtn').className = 'btn';
 
       document.querySelectorAll('#decadeButtons button').forEach((b, i) => b.className = i === 0 ? 'btn btn-primary' : 'btn');
       document.querySelectorAll('#ratingButtons button').forEach((b, i) => b.className = i === 0 ? 'btn btn-primary' : 'btn');
@@ -843,20 +873,21 @@
       // Filtre Cluster SVD
       if (excludedClusters.has(m.cluster)) return false;
 
-      // Filtre Genres
+      // Filtre Genres (Exclusion stricte)
       const mGenres = (m.genres || "").toLowerCase();
-      if (selectedGenres.size > 0) {
-        if (genreFilterMode === 'exclude') {
-          for (const g of selectedGenres) {
-            if (mGenres.includes(g)) return false;
-          }
-        } else {
-          let hasAny = false;
-          for (const g of selectedGenres) {
-            if (mGenres.includes(g)) { hasAny = true; break; }
-          }
-          if (!hasAny) return false;
+      if (excludedGenres.size > 0) {
+        for (const g of excludedGenres) {
+          if (mGenres.includes(g)) return false;
         }
+      }
+
+      // Filtre Genres (Inclusion ciblée - doit contenir au moins un des genres sélectionnés)
+      if (includedGenres.size > 0) {
+        let hasAny = false;
+        for (const g of includedGenres) {
+          if (mGenres.includes(g)) { hasAny = true; break; }
+        }
+        if (!hasAny) return false;
       }
 
       // Filtre Décennie
@@ -891,7 +922,8 @@
       
       const badgeDesc = [];
       if (excludedClusters.size > 0) badgeDesc.push(`${excludedClusters.size} cluster(s) exclu(s)`);
-      if (selectedGenres.size > 0) badgeDesc.push(`${selectedGenres.size} genre(s) ${genreFilterMode === 'exclude' ? 'banni(s)' : 'exigé(s)'}`);
+      if (includedGenres.size > 0) badgeDesc.push(`${includedGenres.size} genre(s) ciblé(s)`);
+      if (excludedGenres.size > 0) badgeDesc.push(`${excludedGenres.size} genre(s) banni(s)`);
       if (selectedDecade !== 'all') badgeDesc.push(`Époque : ${selectedDecade}`);
       if (selectedMinRating > 0) badgeDesc.push(`≥ ${selectedMinRating}★`);
       
@@ -905,7 +937,7 @@
       }
 
       const quickBtn = document.getElementById('btnQuickKidsBan');
-      const isKidsBanActive = selectedGenres.has('animation') && selectedGenres.has('family') && excludedClusters.has(kidsClusterId);
+      const isKidsBanActive = excludedGenres.has('animation') && excludedGenres.has('family') && excludedClusters.has(kidsClusterId);
       if (isKidsBanActive) {
         quickBtn.className = 'btn btn-danger-active';
         quickBtn.textContent = '✓ Animation & Jeunesse Bannis';
@@ -969,10 +1001,8 @@
       const btn = document.getElementById('btnDownloadTxt');
       const params = new URLSearchParams();
       if (excludedClusters.size > 0) params.set('excluded', Array.from(excludedClusters).join(','));
-      if (selectedGenres.size > 0) {
-        if (genreFilterMode === 'exclude') params.set('excluded_genres', Array.from(selectedGenres).join(','));
-        else params.set('included_genres', Array.from(selectedGenres).join(','));
-      }
+      if (excludedGenres.size > 0) params.set('excluded_genres', Array.from(excludedGenres).join(','));
+      if (includedGenres.size > 0) params.set('included_genres', Array.from(includedGenres).join(','));
       if (selectedDecade === 'classic') params.set('max_year', '1979');
       if (selectedDecade === '80-90') { params.set('min_year', '1980'); params.set('max_year', '1999'); }
       if (selectedDecade === '2000s') { params.set('min_year', '2000'); params.set('max_year', '2009'); }
