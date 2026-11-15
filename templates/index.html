@@ -189,7 +189,7 @@
       <div style="display: flex; align-items: center; gap: 1.5rem;" class="mono">
         <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 12px; color: var(--text-secondary);">
           <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--success);"></span>
-          <span>FastAPI : Port 8000</span>
+          <span id="portDisplay">FastAPI : Port 8000</span>
         </div>
         <a href="#section-map" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Aller à la carte</a>
         <a href="#section-top" class="btn" style="padding: 0.35rem 0.75rem; font-size: 12px;">Top 100</a>
@@ -479,6 +479,9 @@
 
     // Initialisation
     async function init() {
+      if (window.location.port) {
+        document.getElementById('portDisplay').textContent = 'FastAPI : Port ' + window.location.port;
+      }
       try {
         const res = await fetch('/api/data');
         appData = await res.json();
