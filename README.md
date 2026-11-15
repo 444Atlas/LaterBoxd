@@ -1,15 +1,15 @@
-# LaterBoxd 🎬
+# LaterBoxd
 
 Système de recommandation personnalisé de films basé sur vos notes Letterboxd, utilisant le filtrage collaboratif par décomposition en valeurs singulières (SVD) et une régression Ridge pour projeter les goûts de l'utilisateur dans l'espace latent des films.
 
-## 🚀 Fonctionnalités
+## Fonctionnalités
 
 - **Filtrage collaboratif SVD** entraîné sur un large ensemble de données de notation de films (`scikit-surprise`).
 - **Personnalisation Ridge** : projection rapide de vos notes Letterboxd sans devoir ré-entraîner tout le modèle SVD.
 - **Normalisation des titres** : gestion des titres multilingues, alias et suppressions des accents/caractères spéciaux.
 - **Export automatique** : génération d'un rapport `recommandations.txt` listant le Top 100 des films recommandés avec notes estimées.
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 ```text
 LaterBoxd/
@@ -27,7 +27,7 @@ LaterBoxd/
 └── README.md
 ```
 
-## 🛠️ Installation
+## Installation
 
 1. Clonez le dépôt :
    ```bash
@@ -46,7 +46,7 @@ LaterBoxd/
    pip install -r requirements.txt
    ```
 
-## 🎯 Utilisation
+## Utilisation
 
 1. **Données d'entraînement & Modèle** :
    - Placez votre fichier d'entraînement `train.parquet` dans le dossier `data/`.

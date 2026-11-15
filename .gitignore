@@ -37,6 +37,8 @@ venv.bak/
 # Large binary files (>100MB, exceeds GitHub limits)
 data/*.parquet
 models/*.pkl
+filters/
+
 
 # OS / Editor files
 .DS_Store
